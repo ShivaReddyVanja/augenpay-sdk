@@ -1,0 +1,34 @@
+{
+  "name": "augenpay-sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for AugenPay Payment Protocol",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node sandbox.ts",
+    "sandbox": "ts-node sandbox.ts",
+    "clean": "rm -rf dist",
+    "generate-keypairs": "ts-node scripts/generate-keypairs.ts",
+    "show-wallets": "ts-node scripts/show-wallet-links.ts"
+  },
+  "keywords": [
+    "solana",
+    "payment",
+    "augenpay",
+    "sdk"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@solana/web3.js": "^1.87.6",
+    "@solana/spl-token": "^0.3.9"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+}
