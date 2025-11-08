@@ -1,6 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Connection, Keypair } from "@solana/web3.js";
 import { CLUSTER_ENDPOINTS, DEFAULT_CLUSTER, COMMITMENT } from "../config/constants";
+import idl from "../augenpay-idl.json";
 
 /**
  * Create a Solana connection
@@ -35,25 +36,29 @@ export function createWallet(keypair: Keypair): anchor.Wallet {
 
 /**
  * Get or create AugenPay program instance
+ * Uses local IDL file instead of fetching from chain for better performance and reliability
  */
-export async function getProgram(
+export function getProgram(
   provider: anchor.AnchorProvider,
   programId: anchor.web3.PublicKey
-): Promise<anchor.Program> {
-  // Load IDL from chain
-  const idl = await anchor.Program.fetchIdl(programId, provider);
+): anchor.Program {
+  // Load IDL from local file (shipped with SDK)
+  const idlData = idl as anchor.Idl;
   
-  if (!idl) {
-    throw new Error("IDL not found for program: " + programId.toBase58());
+  // Verify program ID matches
+  if (idlData.address && idlData.address !== programId.toBase58()) {
+    console.warn(
+      `Warning: Program ID mismatch. IDL has ${idlData.address}, but provided ${programId.toBase58()}`
+    );
   }
 
-  return new anchor.Program(idl as anchor.Idl, provider);
+  return new anchor.Program(idlData, provider);
 }
 
 /**
  * Convenience function to get everything set up
  */
-export async function initializeClient(
+export function initializeClient(
   wallet: Keypair,
   cluster: keyof typeof CLUSTER_ENDPOINTS = DEFAULT_CLUSTER,
   programId: anchor.web3.PublicKey
@@ -61,7 +66,7 @@ export async function initializeClient(
   const connection = createConnection(cluster);
   const anchorWallet = createWallet(wallet);
   const provider = createProvider(connection, anchorWallet);
-  const program = await getProgram(provider, programId);
+  const program = getProgram(provider, programId);
 
   return {
     connection,

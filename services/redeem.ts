@@ -3,6 +3,7 @@ import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { deriveTicketPDA } from "../core/pda";
 import { OrderData, createContextHashArray, displayOrderHash } from "../utils/hashing";
+import { RedeemEvent } from "../types/accounts";
 
 export interface RedeemParams {
   allotment: PublicKey;
@@ -67,116 +68,22 @@ export async function redeemAllotment(
 }
 
 /**
- * Simplified payment flow for movie tickets
- */
-export async function payForMovieTickets(
-  program: anchor.Program,
-  params: {
-    allotment: PublicKey;
-    mandate: PublicKey;
-    agent: PublicKey;
-    merchant: PublicKey;
-    merchantTokenAccount: PublicKey;
-    vault: PublicKey;
-    mint: PublicKey;
-    movieName: string;
-    numberOfTickets: number;
-    email: string;
-    showtime?: string;
-    pricePerTicket: number; // in token base units
-  }
-): Promise<{ ticket: PublicKey; signature: string }> {
-  console.log("\n🎬 Buying movie tickets...");
-  console.log(`   Movie: ${params.movieName}`);
-  console.log(`   Tickets: ${params.numberOfTickets}`);
-  console.log(`   Email: ${params.email}`);
-  
-  const orderData: OrderData = {
-    email: params.email,
-    movie: params.movieName,
-    numberOfTickets: params.numberOfTickets,
-    showtime: params.showtime || "TBD",
-    pricePerTicket: params.pricePerTicket,
-    timestamp: Date.now(),
-  };
-  
-  const totalAmount = params.numberOfTickets * params.pricePerTicket;
-  
-  const result = await redeemAllotment(program, {
-    allotment: params.allotment,
-    mandate: params.mandate,
-    agent: params.agent,
-    merchant: params.merchant,
-    merchantTokenAccount: params.merchantTokenAccount,
-    vault: params.vault,
-    mint: params.mint,
-    amount: totalAmount,
-    orderData,
-  });
-  
-  return result;
-}
-
-/**
- * Simplified payment flow for e-commerce
- */
-export async function payForEcommerceOrder(
-  program: anchor.Program,
-  params: {
-    allotment: PublicKey;
-    mandate: PublicKey;
-    agent: PublicKey;
-    merchant: PublicKey;
-    merchantTokenAccount: PublicKey;
-    vault: PublicKey;
-    mint: PublicKey;
-    orderId: string;
-    customerEmail: string;
-    items: { productId: string; quantity: number; price: number }[];
-    shippingAddress?: string;
-  }
-): Promise<{ ticket: PublicKey; signature: string }> {
-  console.log("\n🛒 Processing e-commerce order...");
-  console.log(`   Order ID: ${params.orderId}`);
-  console.log(`   Items: ${params.items.length}`);
-  
-  const totalAmount = params.items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-  
-  const orderData: OrderData = {
-    orderId: params.orderId,
-    customerEmail: params.customerEmail,
-    items: params.items,
-    totalAmount,
-    shippingAddress: params.shippingAddress,
-    timestamp: Date.now(),
-  };
-  
-  const result = await redeemAllotment(program, {
-    allotment: params.allotment,
-    mandate: params.mandate,
-    agent: params.agent,
-    merchant: params.merchant,
-    merchantTokenAccount: params.merchantTokenAccount,
-    vault: params.vault,
-    mint: params.mint,
-    amount: totalAmount,
-    orderData,
-  });
-  
-  return result;
-}
-
-/**
  * Listen for redeem events
  */
 export function listenForRedeemEvents(
   program: anchor.Program,
-  callback: (event: any) => void
+  callback: (event: RedeemEvent) => void
 ): number {
   const listenerId = (program as any).addEventListener("RedeemEvent", (event: any, slot: number) => {
+    // Convert Anchor event to typed RedeemEvent
+    const typedEvent: RedeemEvent = {
+      allotment: event.allotment,
+      merchant: event.merchant,
+      agent: event.agent,
+      contextHash: event.contextHash,
+      amount: event.amount,
+      timestamp: event.timestamp,
+    };
     console.log("\n🔔 Redeem Event Received:");
     console.log(`   Slot: ${slot}`);
     console.log(`   Allotment: ${event.allotment.toBase58()}`);
@@ -185,7 +92,7 @@ export function listenForRedeemEvents(
     console.log(`   Amount: ${event.amount.toNumber() / 1e6} tokens`);
     console.log(`   Timestamp: ${new Date(event.timestamp.toNumber() * 1000).toISOString()}`);
     
-    callback(event);
+    callback(typedEvent);
   });
   
   return listenerId;

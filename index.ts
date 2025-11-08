@@ -10,6 +10,7 @@ export * from "./config/constants";
 export * from "./core/connection";
 export * from "./core/pda";
 export * from "./core/wallet";
+export * from "./core/client";
 
 // Services
 export * as mandateService from "./services/mandate";
@@ -20,4 +21,7 @@ export * as merchantService from "./services/merchant";
 // Utils
 export * from "./utils/tokens";
 export * from "./utils/hashing";
+
+// Types
+export * from "./types/accounts";
 

@@ -2,6 +2,18 @@ import * as anchor from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import { getMerchantTickets } from "../core/pda";
 import { OrderData, verifyContextHash, hashToHex } from "../utils/hashing";
+import { RedemptionTicket } from "../types/accounts";
+
+/**
+ * Ticket with its public key
+ * Used when returning tickets with their on-chain addresses
+ */
+export interface TicketWithPubkey {
+  /** The public key (PDA) of the ticket account */
+  pubkey: PublicKey;
+  /** The ticket account data */
+  account: RedemptionTicket;
+}
 
 /**
  * Fetch a specific redemption ticket
@@ -9,8 +21,15 @@ import { OrderData, verifyContextHash, hashToHex } from "../utils/hashing";
 export async function fetchTicket(
   program: anchor.Program,
   ticket: PublicKey
-): Promise<any> {
-  return await (program.account as any).redemptionTicket.fetch(ticket);
+): Promise<RedemptionTicket> {
+  const account = await (program.account as any).redemptionTicket.fetch(ticket);
+  return {
+    allotment: account.allotment,
+    merchant: account.merchant,
+    contextHash: account.contextHash,
+    amount: account.amount,
+    timestamp: account.timestamp,
+  };
 }
 
 /**
@@ -19,7 +38,7 @@ export async function fetchTicket(
 export async function fetchMerchantTickets(
   program: anchor.Program,
   merchant: PublicKey
-): Promise<Array<{ pubkey: PublicKey; account: any }>> {
+): Promise<TicketWithPubkey[]> {
   const ticketPubkeys = await getMerchantTickets(
     merchant,
     program.programId,
@@ -45,7 +64,7 @@ export async function verifyTicket(
   program: anchor.Program,
   ticket: PublicKey,
   expectedOrderData: OrderData
-): Promise<{ valid: boolean; ticketData: any }> {
+): Promise<{ valid: boolean; ticketData: RedemptionTicket }> {
   console.log("\n✅ Verifying ticket...");
   console.log(`   Ticket: ${ticket.toBase58()}`);
   
@@ -71,7 +90,7 @@ export async function verifyTicket(
 /**
  * Display ticket information
  */
-export function displayTicketInfo(ticket: any) {
+export function displayTicketInfo(ticket: RedemptionTicket) {
   console.log("\n🎫 Redemption Ticket:");
   console.log(`   Allotment: ${ticket.allotment.toBase58()}`);
   console.log(`   Merchant: ${ticket.merchant.toBase58()}`);
@@ -84,7 +103,7 @@ export function displayTicketInfo(ticket: any) {
  * Display all merchant tickets
  */
 export function displayMerchantTickets(
-  tickets: Array<{ pubkey: PublicKey; account: any }>
+  tickets: TicketWithPubkey[]
 ) {
   console.log(`\n📋 Merchant Tickets (${tickets.length} total):`);
   console.log("=".repeat(80));
@@ -108,7 +127,7 @@ export async function monitorMerchantTickets(
   program: anchor.Program,
   merchant: PublicKey,
   intervalSeconds: number = 5,
-  callback: (newTickets: Array<{ pubkey: PublicKey; account: any }>) => void
+  callback: (newTickets: TicketWithPubkey[]) => void
 ): Promise<NodeJS.Timeout> {
   let lastTicketCount = 0;
   
@@ -147,7 +166,7 @@ export async function findTicketByHash(
   program: anchor.Program,
   merchant: PublicKey,
   targetHash: number[] | Buffer | Uint8Array
-): Promise<{ pubkey: PublicKey; account: any } | null> {
+): Promise<TicketWithPubkey | null> {
   const tickets = await fetchMerchantTickets(program, merchant);
   const hashBuffer = Buffer.isBuffer(targetHash)
     ? targetHash
@@ -170,7 +189,7 @@ export async function verifyAndFulfillOrder(
   program: anchor.Program,
   ticket: PublicKey,
   expectedOrderData: OrderData,
-  fulfillmentCallback: (ticketData: any) => Promise<void>
+  fulfillmentCallback: (ticketData: RedemptionTicket) => Promise<void>
 ): Promise<boolean> {
   const { valid, ticketData } = await verifyTicket(
     program,

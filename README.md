@@ -39,6 +39,73 @@ This will demonstrate the complete payment flow:
 
 ### Basic Usage
 
+#### Option 1: Client Class (Recommended for Simplicity)
+
+```typescript
+import { AugenPayClient, AUGENPAY_PROGRAM_ID } from "augenpay-sdk";
+import { Keypair, PublicKey } from "@solana/web3.js";
+
+// Initialize client
+const client = new AugenPayClient(userKeypair, "devnet", AUGENPAY_PROGRAM_ID);
+
+// Create mandate
+const { mandate, vault } = await client.createMandate(
+  userKeypair.publicKey,
+  mintPublicKey,
+  {
+    perTxLimit: 100_000000, // 100 tokens
+    expiryDays: 30
+  }
+);
+
+// Deposit funds
+await client.deposit(
+  mandate,
+  userTokenAccount,
+  vault,
+  mint,
+  userKeypair.publicKey,
+  500_000000 // 500 tokens
+);
+
+// Create allotment for agent
+const { allotment } = await client.createAllotment(
+  mandate,
+  agentPublicKey,
+  userKeypair.publicKey,
+  {
+    allowedAmount: 200_000000,
+    ttlHours: 24
+  }
+);
+
+// Agent executes payment
+const orderData = {
+  orderId: "ORD-12345",
+  customerEmail: "user@example.com",
+  items: [{ productId: "PROD-1", quantity: 2, price: 10_000000 }],
+  totalAmount: 20_000000,
+  timestamp: Date.now(),
+};
+
+const { ticket } = await client.redeem({
+  allotment,
+  mandate,
+  agent: agentKeypair.publicKey,
+  merchant: merchantPublicKey,
+  merchantTokenAccount,
+  vault,
+  mint,
+  amount: 20_000000,
+  orderData
+});
+
+// Merchant verifies payment
+const { valid } = await client.verifyTicket(ticket, orderData);
+```
+
+#### Option 2: Service-Oriented API (More Flexible)
+
 ```typescript
 import {
   initializeClient,
@@ -47,10 +114,10 @@ import {
   redeemService,
   merchantService,
   AUGENPAY_PROGRAM_ID
-} from "./index";
+} from "augenpay-sdk";
 
 // Initialize
-const { program } = await initializeClient(
+const { program } = initializeClient(
   userKeypair,
   "devnet",
   AUGENPAY_PROGRAM_ID
@@ -62,58 +129,12 @@ const { mandate, vault } = await mandateService.createMandate(
   userKeypair.publicKey,
   mintPublicKey,
   {
-    perTxLimit: 100_000000, // 100 tokens
+    perTxLimit: 100_000000,
     expiryDays: 30
   }
 );
 
-// Deposit funds
-await mandateService.depositToMandate(
-  program,
-  mandate,
-  userTokenAccount,
-  vault,
-  mint,
-  userKeypair.publicKey,
-  500_000000 // 500 tokens
-);
-
-// Create allotment for agent
-const { allotment } = await allotmentService.createAllotment(
-  program,
-  mandate,
-  agentPublicKey,
-  userKeypair.publicKey,
-  {
-    allowedAmount: 200_000000,
-    ttlHours: 24
-  }
-);
-
-// Agent executes payment
-const { ticket } = await redeemService.payForMovieTickets(
-  agentProgram, // Agent's program instance
-  {
-    allotment,
-    mandate,
-    agent: agentKeypair.publicKey,
-    merchant: merchantPublicKey,
-    merchantTokenAccount,
-    vault,
-    mint,
-    movieName: "Batman",
-    numberOfTickets: 2,
-    email: "user@example.com",
-    pricePerTicket: 10_000000
-  }
-);
-
-// Merchant verifies payment
-const { valid } = await merchantService.verifyTicket(
-  program,
-  ticket,
-  expectedOrderData
-);
+// ... (same pattern for other operations)
 ```
 
 ## Project Structure
@@ -199,21 +220,28 @@ const ticket = await merchantService.findTicketByHash(
 
 ## Order Hashing
 
-Orders are hashed using SHA256 before being stored on-chain:
+Orders are hashed using SHA256 before being stored on-chain. You define your own order data structure:
 
 ```typescript
-import { createMovieTicketHash } from "./utils/hashing";
+import { createContextHashArray, hashToHex, OrderData } from "@augenpay/sdk";
 
-const { hash, hashHex, orderData } = createMovieTicketHash({
-  email: "user@example.com",
-  movieName: "Batman",
-  numberOfTickets: 2,
-  showtime: "7:00 PM"
-});
+// Define your order data structure (merchant-defined)
+const orderData: OrderData = {
+  orderId: "ORD-12345",
+  customerEmail: "user@example.com",
+  items: [
+    { productId: "PROD-001", quantity: 2, price: 50 }
+  ],
+  totalAmount: 100,
+  timestamp: Date.now()
+};
 
-// hash = [array of 32 bytes]
-// hashHex = "7a8b9c..." (hex string)
-// orderData = { email, movie, ... }
+// Create hash for on-chain storage
+const hash = createContextHashArray(orderData);
+const hashHex = hashToHex(hash);
+
+// hash = [array of 32 bytes] - use this in redeem()
+// hashHex = "7a8b9c..." (hex string for display)
 ```
 
 Custom order types:
@@ -232,6 +260,40 @@ const hash = createContextHashArray(orderData);
 ```
 
 ## API Reference
+
+### Client Class (Recommended)
+
+The `AugenPayClient` class provides a unified, object-oriented API:
+
+```typescript
+const client = new AugenPayClient(keypair, 'devnet', AUGENPAY_PROGRAM_ID);
+
+// Mandate operations
+await client.createMandate(owner, mint, config);
+await client.deposit(mandate, from, vault, mint, owner, amount);
+await client.withdraw(mandate, vault, to, mint, owner, amount);
+await client.pauseMandate(mandate, owner);
+await client.resumeMandate(mandate, owner);
+const mandate = await client.getMandate(mandateAddress);
+
+// Allotment operations
+await client.createAllotment(mandate, agent, owner, config);
+await client.modifyAllotment(mandate, allotment, owner, amount, ttl);
+await client.revokeAllotment(mandate, allotment, owner);
+const allotment = await client.getAllotment(allotmentAddress);
+
+// Payment operations
+await client.redeem(params);
+client.onRedeem(callback);
+
+// Merchant operations
+await client.getTicket(ticket);
+await client.getMerchantTickets(merchant);
+await client.verifyTicket(ticket, orderData);
+await client.findTicketByHash(merchant, hash);
+```
+
+See [examples/00-client-example.ts](./examples/00-client-example.ts) for a complete example.
 
 ### Mandate Service
 
@@ -274,12 +336,8 @@ displayAllotmentInfo(allotmentData)
 ### Redeem Service
 
 ```typescript
-// Generic redeem
+// Execute payment (generic - works for any use case)
 redeemAllotment(program, params)
-
-// Convenience functions
-payForMovieTickets(program, params)
-payForEcommerceOrder(program, params)
 
 // Event listening
 listenForRedeemEvents(program, callback)
@@ -340,7 +398,18 @@ See `sandbox.ts` for complete example.
 
 ### E-commerce
 ```typescript
-const { ticket } = await redeemService.payForEcommerceOrder(
+const orderData = {
+  orderId: "ORD-12345",
+  customerEmail: "customer@example.com",
+  items: [
+    { productId: "PROD-1", quantity: 2, price: 25_000000 }
+  ],
+  totalAmount: 50_000000,
+  shippingAddress: "123 Main St",
+  timestamp: Date.now(),
+};
+
+const { ticket } = await redeemService.redeemAllotment(
   program,
   {
     allotment,
@@ -350,12 +419,8 @@ const { ticket } = await redeemService.payForEcommerceOrder(
     merchantTokenAccount,
     vault,
     mint,
-    orderId: "ORD-12345",
-    customerEmail: "customer@example.com",
-    items: [
-      { productId: "PROD-1", quantity: 2, price: 25_000000 }
-    ],
-    shippingAddress: "123 Main St"
+    amount: orderData.totalAmount,
+    orderData
   }
 );
 ```

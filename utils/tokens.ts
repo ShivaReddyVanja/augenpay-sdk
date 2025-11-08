@@ -4,7 +4,8 @@ import {
   mintTo,
   getAccount,
   TOKEN_PROGRAM_ID,
-} from "@solana/spl-token";
+} from '@solana/spl-token';
+
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 
 /**

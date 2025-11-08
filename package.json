@@ -1,14 +1,28 @@
 {
   "name": "augenpay-sdk",
   "version": "1.0.0",
-  "description": "TypeScript SDK for AugenPay Payment Protocol",
+  "description": "TypeScript SDK for AugenPay Payment Protocol on Solana - Delegated payments with on-chain verification",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "augenpay-idl.json",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "ts-node sandbox.ts",
     "sandbox": "ts-node sandbox.ts",
     "clean": "rm -rf dist",
+    "prepublishOnly": "yarn clean && yarn build",
+    "prepack": "yarn build",
     "generate-keypairs": "ts-node scripts/generate-keypairs.ts",
     "show-wallets": "ts-node scripts/show-wallet-links.ts"
   },
@@ -16,16 +30,36 @@
     "solana",
     "payment",
     "augenpay",
-    "sdk"
+    "sdk",
+    "typescript",
+    "anchor",
+    "blockchain",
+    "crypto",
+    "delegated-payments",
+    "on-chain-verification",
+    "web3",
+    "defi"
   ],
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/augenpay-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/augenpay-sdk/issues"
+  },
+  "homepage": "https://github.com/your-username/augenpay-sdk#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
-    "@solana/web3.js": "^1.87.6",
-    "@solana/spl-token": "^0.3.9"
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.87.6"
   },
   "devDependencies": {
+    "@types/bs58": "^4.0.4",
     "@types/node": "^20.10.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"

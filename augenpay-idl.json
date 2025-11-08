@@ -1,0 +1,1169 @@
+{
+  "address": "6RAnxyQmKfsKxDfpFu2Axry4Hah7aFM8zb2oS3oG41qp",
+  "metadata": {
+    "name": "augenpay_program",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "create_allotment",
+      "docs": [
+        "Create allotment for an agent with allowed_amount and ttl."
+      ],
+      "discriminator": [
+        94,
+        59,
+        38,
+        206,
+        158,
+        156,
+        92,
+        174
+      ],
+      "accounts": [
+        {
+          "name": "mandate",
+          "writable": true
+        },
+        {
+          "name": "allotment",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "agent"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "allowed_amount",
+          "type": "u64"
+        },
+        {
+          "name": "ttl",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "create_mandate",
+      "docs": [
+        "Create a mandate and associated vault (ATA) for the specified token mint.",
+        "The payer is the owner who funds the rent for the Mandate account and ATA creation."
+      ],
+      "discriminator": [
+        230,
+        170,
+        158,
+        68,
+        33,
+        169,
+        16,
+        158
+      ],
+      "accounts": [
+        {
+          "name": "mandate",
+          "docs": [
+            "Mandate PDA to store metadata"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  110,
+                  100,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "arg",
+                "path": "mandate_nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The token mint for this mandate's vault (eg USDC)"
+          ]
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "The associated token account (vault) for the Mandate PDA (will be created)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "mandate"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "mandate_bump",
+          "type": "u8"
+        },
+        {
+          "name": "mandate_nonce",
+          "type": "u64"
+        },
+        {
+          "name": "per_tx_limit",
+          "type": "u64"
+        },
+        {
+          "name": "expiry",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "deposit",
+      "docs": [
+        "Deposit tokens into the Mandate vault.",
+        "The `from` is the user's token account. Transfers to vault ATA (associated token account for Mandate PDA)."
+      ],
+      "discriminator": [
+        242,
+        35,
+        198,
+        137,
+        82,
+        225,
+        242,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "mandate",
+          "writable": true
+        },
+        {
+          "name": "from",
+          "docs": [
+            "User's token account (source)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Vault ATA (destination)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "mandate"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "modify_allotment",
+      "docs": [
+        "Modify allotment (owner only)"
+      ],
+      "discriminator": [
+        28,
+        115,
+        59,
+        18,
+        45,
+        253,
+        54,
+        36
+      ],
+      "accounts": [
+        {
+          "name": "mandate",
+          "writable": true
+        },
+        {
+          "name": "allotment",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_allowed_amount",
+          "type": "u64"
+        },
+        {
+          "name": "new_ttl",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "pause_mandate",
+      "docs": [
+        "Pause a mandate: blocks create_allotment and redeem flows."
+      ],
+      "discriminator": [
+        192,
+        108,
+        97,
+        124,
+        56,
+        229,
+        236,
+        3
+      ],
+      "accounts": [
+        {
+          "name": "mandate",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "redeem",
+      "docs": [
+        "Agent redeems an allotment: transfers tokens from vault to merchant token account and creates a public ticket.",
+        "",
+        "Merchants can discover their tickets using PDA:",
+        "- seeds: [b\"ticket\", merchant_pubkey, allotment_pubkey]",
+        "- Or listen for RedeemEvent filtered by merchant address"
+      ],
+      "discriminator": [
+        184,
+        12,
+        86,
+        149,
+        70,
+        196,
+        97,
+        225
+      ],
+      "accounts": [
+        {
+          "name": "allotment",
+          "writable": true
+        },
+        {
+          "name": "mandate",
+          "writable": true
+        },
+        {
+          "name": "agent",
+          "docs": [
+            "the agent calling redeem - must match allotment.agent"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "merchant"
+        },
+        {
+          "name": "merchant_token_account",
+          "docs": [
+            "Merchant's token account to receive funds (for the same mint)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Vault (ATA for Mandate PDA)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "mandate"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "ticket",
+          "docs": [
+            "Ticket PDA created to store context hash publicly",
+            "Seeded with merchant address for easy discoverability"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  105,
+                  99,
+                  107,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "merchant"
+              },
+              {
+                "kind": "account",
+                "path": "allotment"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "context_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "resume_mandate",
+      "docs": [
+        "Resume a paused mandate."
+      ],
+      "discriminator": [
+        52,
+        200,
+        83,
+        147,
+        28,
+        11,
+        43,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "mandate",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "revoke_agent_allotment",
+      "docs": [
+        "Revoke all allotments for an agent (example pattern: off-chain indexer could do this in bulk; here we show a per-allotment invocation)"
+      ],
+      "discriminator": [
+        116,
+        223,
+        99,
+        102,
+        218,
+        6,
+        19,
+        54
+      ],
+      "accounts": [
+        {
+          "name": "mandate",
+          "writable": true
+        },
+        {
+          "name": "allotment",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "revoke_allotment",
+      "docs": [
+        "Revoke a single allotment"
+      ],
+      "discriminator": [
+        155,
+        6,
+        255,
+        178,
+        178,
+        200,
+        222,
+        208
+      ],
+      "accounts": [
+        {
+          "name": "mandate",
+          "writable": true
+        },
+        {
+          "name": "allotment",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "withdraw",
+      "docs": [
+        "Withdraw tokens from the Mandate vault to owner's token account."
+      ],
+      "discriminator": [
+        183,
+        18,
+        70,
+        156,
+        148,
+        109,
+        161,
+        34
+      ],
+      "accounts": [
+        {
+          "name": "mandate",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Vault ATA (source)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "mandate"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "to",
+          "docs": [
+            "Destination token account for owner"
+          ],
+          "writable": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "AllotmentAccount",
+      "discriminator": [
+        221,
+        81,
+        84,
+        108,
+        232,
+        164,
+        66,
+        28
+      ]
+    },
+    {
+      "name": "MandateAccount",
+      "discriminator": [
+        93,
+        50,
+        242,
+        30,
+        106,
+        198,
+        146,
+        213
+      ]
+    },
+    {
+      "name": "RedemptionTicket",
+      "discriminator": [
+        134,
+        239,
+        22,
+        113,
+        25,
+        135,
+        201,
+        241
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "RedeemEvent",
+      "discriminator": [
+        90,
+        114,
+        83,
+        146,
+        212,
+        26,
+        217,
+        59
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InsufficientFunds",
+      "msg": "Insufficient funds"
+    },
+    {
+      "code": 6001,
+      "name": "MandatePaused",
+      "msg": "Mandate is paused"
+    },
+    {
+      "code": 6002,
+      "name": "Revoked",
+      "msg": "Allotment revoked"
+    },
+    {
+      "code": 6003,
+      "name": "AllotmentExpired",
+      "msg": "Allotment expired"
+    },
+    {
+      "code": 6004,
+      "name": "LimitExceeded",
+      "msg": "Limit exceeded"
+    },
+    {
+      "code": 6005,
+      "name": "TxTooLarge",
+      "msg": "Transaction amount is too large"
+    },
+    {
+      "code": 6006,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6007,
+      "name": "UnauthorizedAgent",
+      "msg": "Unauthorized agent"
+    },
+    {
+      "code": 6008,
+      "name": "MathOverflow",
+      "msg": "Math overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "AllotmentAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mandate",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent",
+            "type": "pubkey"
+          },
+          {
+            "name": "allowed_amount",
+            "type": "u64"
+          },
+          {
+            "name": "spent_amount",
+            "type": "u64"
+          },
+          {
+            "name": "ttl",
+            "type": "i64"
+          },
+          {
+            "name": "revoked",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MandateAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "mandate_bump",
+            "type": "u8"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "token_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "per_tx_limit",
+            "type": "u64"
+          },
+          {
+            "name": "expiry",
+            "type": "i64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "total_deposited",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RedeemEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "allotment",
+            "type": "pubkey"
+          },
+          {
+            "name": "merchant",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent",
+            "type": "pubkey"
+          },
+          {
+            "name": "context_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RedemptionTicket",
+      "docs": [
+        "RedemptionTicket - On-chain proof of payment",
+        "",
+        "Merchants can discover their tickets via:",
+        "",
+        "1. PDA Derivation (if allotment is known):",
+        "```",
+        "let (ticket_pda, _) = Pubkey::find_program_address(",
+        "&[b\"ticket\", merchant_pubkey.as_ref(), allotment_pubkey.as_ref()],",
+        "&program_id",
+        ");",
+        "```",
+        "",
+        "2. getProgramAccounts (find all tickets for merchant):",
+        "```",
+        "connection.getProgramAccounts(programId, {",
+        "filters: [",
+        "{ dataSize: 8 + RedemptionTicket::SIZE },",
+        "{ memcmp: { offset: 40, bytes: merchant_pubkey } }  // merchant field offset",
+        "]",
+        "});",
+        "```",
+        "",
+        "3. Event Listening:",
+        "Listen for `RedeemEvent` filtered by merchant address"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "allotment",
+            "type": "pubkey"
+          },
+          {
+            "name": "merchant",
+            "type": "pubkey"
+          },
+          {
+            "name": "context_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+}

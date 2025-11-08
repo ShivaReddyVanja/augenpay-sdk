@@ -11,20 +11,14 @@
  * 5. Merchant verifies payment on-chain
  */
 
-import * as anchor from "@coral-xyz/anchor";
 import { Keypair } from "@solana/web3.js";
 import * as fs from "fs";
 import * as path from "path";
 import { AUGENPAY_PROGRAM_ID } from "./config/constants";
-import { initializeClient } from "./core/connection";
+import { AugenPayClient } from "./core/client";
 import { getBalance } from "./core/wallet";
-import { deriveVaultATA } from "./core/pda";
 import { setupTestEnvironment, getTokenBalance, formatTokenAmount } from "./utils/tokens";
-import { createMovieTicketHash } from "./utils/hashing";
-import * as mandateService from "./services/mandate";
-import * as allotmentService from "./services/allotment";
-import * as redeemService from "./services/redeem";
-import * as merchantService from "./services/merchant";
+import { createContextHashArray, hashToHex, OrderData } from "./utils/hashing";
 
 /**
  * Load fixed keypair from file
@@ -66,21 +60,17 @@ async function main() {
   console.log(`   Agent: ${agent.publicKey.toBase58()}`);
   console.log(`   Merchant: ${merchant.publicKey.toBase58()}`);
   
-  // Initialize client
-  const { connection, provider, program } = await initializeClient(
-    user,
-    "devnet",
-    AUGENPAY_PROGRAM_ID
-  );
+  // Initialize client (user's client)
+  const client = new AugenPayClient(user, "devnet", AUGENPAY_PROGRAM_ID);
   
-  console.log(`\n📡 Connected to: ${connection.rpcEndpoint}`);
-  console.log(`   Program ID: ${program.programId.toBase58()}`);
+  console.log(`\n📡 Connected to: ${client.connection.rpcEndpoint}`);
+  console.log(`   Program ID: ${client.programId.toBase58()}`);
   
   // Check SOL balances
   console.log("\n💰 Checking SOL Balances:");
-  const userBalance = await getBalance(connection, user.publicKey);
-  const agentBalance = await getBalance(connection, agent.publicKey);
-  const merchantBalance = await getBalance(connection, merchant.publicKey);
+  const userBalance = await getBalance(client.connection, user.publicKey);
+  const agentBalance = await getBalance(client.connection, agent.publicKey);
+  const merchantBalance = await getBalance(client.connection, merchant.publicKey);
   
   console.log(`   User: ${userBalance} SOL`);
   console.log(`   Agent: ${agentBalance} SOL`);
@@ -100,7 +90,7 @@ async function main() {
   
   // Setup test token
   const { mint, tokenAccounts } = await setupTestEnvironment(
-    connection,
+    client.connection,
     user,
     [user, agent, merchant],
     1000_000000 // 1000 tokens each
@@ -109,9 +99,9 @@ async function main() {
   const [userTokenAccount, agentTokenAccount, merchantTokenAccount] = tokenAccounts;
   
   console.log("\n🪙 Token Balances:");
-  console.log(`   User: ${formatTokenAmount(await getTokenBalance(connection, userTokenAccount))} tokens`);
-  console.log(`   Agent: ${formatTokenAmount(await getTokenBalance(connection, agentTokenAccount))} tokens`);
-  console.log(`   Merchant: ${formatTokenAmount(await getTokenBalance(connection, merchantTokenAccount))} tokens`);
+  console.log(`   User: ${formatTokenAmount(await getTokenBalance(client.connection, userTokenAccount))} tokens`);
+  console.log(`   Agent: ${formatTokenAmount(await getTokenBalance(client.connection, agentTokenAccount))} tokens`);
+  console.log(`   Merchant: ${formatTokenAmount(await getTokenBalance(client.connection, merchantTokenAccount))} tokens`);
   
   // ============================================
   // STEP 1: User creates mandate
@@ -119,8 +109,7 @@ async function main() {
   console.log("\n\n📝 STEP 1: User creates mandate");
   console.log("=".repeat(80));
   
-  const { mandate, vault, nonce } = await mandateService.createMandate(
-    program,
+  const { mandate, vault, nonce } = await client.createMandate(
     user.publicKey,
     mint,
     {
@@ -130,8 +119,8 @@ async function main() {
   );
   
   // Fetch and display mandate info
-  const mandateData = await mandateService.fetchMandate(program, mandate);
-  mandateService.displayMandateInfo(mandateData);
+  const mandateData = await client.getMandate(mandate);
+  client.displayMandate(mandateData);
   
   // ============================================
   // STEP 2: User deposits 500 tokens
@@ -139,8 +128,7 @@ async function main() {
   console.log("\n\n💰 STEP 2: User deposits funds into mandate");
   console.log("=".repeat(80));
   
-  await mandateService.depositToMandate(
-    program,
+  await client.deposit(
     mandate,
     userTokenAccount,
     vault,
@@ -150,8 +138,8 @@ async function main() {
   );
   
   console.log(`\n📊 Updated balances:`);
-  console.log(`   User token account: ${formatTokenAmount(await getTokenBalance(connection, userTokenAccount))} tokens`);
-  console.log(`   Vault: ${formatTokenAmount(await getTokenBalance(connection, vault))} tokens`);
+  console.log(`   User token account: ${formatTokenAmount(await getTokenBalance(client.connection, userTokenAccount))} tokens`);
+  console.log(`   Vault: ${formatTokenAmount(await getTokenBalance(client.connection, vault))} tokens`);
   
   // ============================================
   // STEP 3: User creates allotment for agent
@@ -159,8 +147,7 @@ async function main() {
   console.log("\n\n🎫 STEP 3: User creates spending allotment for agent");
   console.log("=".repeat(80));
   
-  const { allotment } = await allotmentService.createAllotment(
-    program,
+  const { allotment } = await client.createAllotment(
     mandate,
     agent.publicKey,
     user.publicKey,
@@ -171,8 +158,8 @@ async function main() {
   );
   
   // Fetch and display allotment info
-  const allotmentData = await allotmentService.fetchAllotment(program, allotment);
-  allotmentService.displayAllotmentInfo(allotmentData);
+  const allotmentData = await client.getAllotment(allotment);
+  client.displayAllotment(allotmentData);
   
   // ============================================
   // STEP 4: Complete Payment Flow (Movie Tickets)
@@ -193,52 +180,44 @@ async function main() {
   console.log(JSON.stringify(orderRequest, null, 2));
   
   console.log("\n🏪 Merchant generates order hash and responds:");
-  const { hash, hashHex, orderData } = createMovieTicketHash({
+  // Create order data (merchant-defined structure)
+  const orderData: OrderData = {
     email: orderRequest.email,
-    movieName: orderRequest.movieName,
+    movie: orderRequest.movieName,
     numberOfTickets: orderRequest.numberOfTickets,
     showtime: orderRequest.showtime,
-  });
+    timestamp: Date.now(),
+  };
+  const hash = createContextHashArray(orderData);
+  const hashHex = hashToHex(hash);
   
   console.log(`   Payment address: ${merchantTokenAccount.toBase58()}`);
   console.log(`   Order hash: ${hashHex}`);
   console.log(`   Amount: 20 tokens (10 per ticket)`);
   
-  const merchantBalanceBefore = await getTokenBalance(connection, merchantTokenAccount);
+  const merchantBalanceBefore = await getTokenBalance(client.connection, merchantTokenAccount);
   
   console.log("\n⛓️  Agent executes payment on blockchain:");
   
-  // Use agent's provider
-  const agentProvider = new anchor.AnchorProvider(
-    connection,
-    new anchor.Wallet(agent),
-    { commitment: "confirmed" }
-  );
-  const agentProgram = new anchor.Program(
-    program.idl as anchor.Idl,
-    agentProvider
-  );
+  // Create agent's client for signing transactions
+  const agentClient = new AugenPayClient(agent, "devnet", AUGENPAY_PROGRAM_ID);
   
-  const { ticket, signature } = await redeemService.payForMovieTickets(
-    agentProgram,
-    {
-      allotment,
-      mandate,
-      agent: agent.publicKey,
-      merchant: merchant.publicKey,
-      merchantTokenAccount,
-      vault,
-      mint,
-      movieName: orderRequest.movieName,
-      numberOfTickets: orderRequest.numberOfTickets,
-      email: orderRequest.email,
-      showtime: orderRequest.showtime,
-      pricePerTicket: 10_000000, // 10 tokens per ticket
-    }
-  );
+  const totalAmount = orderRequest.numberOfTickets * 10_000000; // 10 tokens per ticket
+  
+  const { ticket, signature } = await agentClient.redeem({
+    allotment,
+    mandate,
+    agent: agent.publicKey,
+    merchant: merchant.publicKey,
+    merchantTokenAccount,
+    vault,
+    mint,
+    amount: totalAmount,
+    orderData,
+  });
   
   // Verify transfer
-  const merchantBalanceAfter = await getTokenBalance(connection, merchantTokenAccount);
+  const merchantBalanceAfter = await getTokenBalance(client.connection, merchantTokenAccount);
   const amountReceived = Number(merchantBalanceAfter) - Number(merchantBalanceBefore);
   
   console.log(`\n💸 Payment Confirmation:`);
@@ -247,11 +226,11 @@ async function main() {
   console.log(`   Ticket PDA: ${ticket.toBase58()}`);
   
   console.log(`\n📊 Updated balances:`);
-  console.log(`   Vault: ${formatTokenAmount(await getTokenBalance(connection, vault))} tokens`);
+  console.log(`   Vault: ${formatTokenAmount(await getTokenBalance(client.connection, vault))} tokens`);
   console.log(`   Merchant: ${formatTokenAmount(merchantBalanceAfter)} tokens`);
   
   // Update allotment display
-  const updatedAllotment = await allotmentService.fetchAllotment(program, allotment);
+  const updatedAllotment = await client.getAllotment(allotment);
   console.log(`   Allotment spent: ${formatTokenAmount(updatedAllotment.spentAmount.toNumber())} tokens`);
   console.log(`   Allotment remaining: ${formatTokenAmount(updatedAllotment.allowedAmount.toNumber() - updatedAllotment.spentAmount.toNumber())} tokens`);
   
@@ -262,15 +241,11 @@ async function main() {
   console.log("=".repeat(80));
   
   // Merchant fetches ticket
-  const ticketData = await merchantService.fetchTicket(program, ticket);
-  merchantService.displayTicketInfo(ticketData);
+  const ticketData = await client.getTicket(ticket);
+  client.displayTicket(ticketData);
   
   // Verify hash matches
-  const { valid } = await merchantService.verifyTicket(
-    program,
-    ticket,
-    orderData
-  );
+  const { valid } = await client.verifyTicket(ticket, orderData);
   
   if (valid) {
     console.log("\n📧 Merchant fulfills order:");
@@ -286,11 +261,8 @@ async function main() {
   console.log("\n\n📋 STEP 6: Merchant queries all their tickets");
   console.log("=".repeat(80));
   
-  const allTickets = await merchantService.fetchMerchantTickets(
-    program,
-    merchant.publicKey
-  );
-  merchantService.displayMerchantTickets(allTickets);
+  const allTickets = await client.getMerchantTickets(merchant.publicKey);
+  client.displayTickets(allTickets);
   
   // ============================================
   // STEP 7: Additional features demo
@@ -299,8 +271,7 @@ async function main() {
   console.log("=".repeat(80));
   
   console.log("\n✏️  Testing allotment modification:");
-  await allotmentService.modifyAllotment(
-    program,
+  await client.modifyAllotment(
     mandate,
     allotment,
     user.publicKey,
@@ -308,19 +279,18 @@ async function main() {
     48 // Extend to 48 hours
   );
   
-  const modifiedAllotment = await allotmentService.fetchAllotment(program, allotment);
-  allotmentService.displayAllotmentInfo(modifiedAllotment);
+  const modifiedAllotment = await client.getAllotment(allotment);
+  client.displayAllotment(modifiedAllotment);
   
   console.log("\n⏸️  Testing pause/resume:");
-  await mandateService.pauseMandate(program, mandate, user.publicKey);
+  await client.pauseMandate(mandate, user.publicKey);
   console.log("   ✅ Mandate paused");
   
-  await mandateService.resumeMandate(program, mandate, user.publicKey);
+  await client.resumeMandate(mandate, user.publicKey);
   console.log("   ✅ Mandate resumed");
   
   console.log("\n💸 Testing withdrawal:");
-  await mandateService.withdrawFromMandate(
-    program,
+  await client.withdraw(
     mandate,
     vault,
     userTokenAccount,
@@ -330,9 +300,9 @@ async function main() {
   );
   
   console.log(`\n📊 Final balances:`);
-  console.log(`   User: ${formatTokenAmount(await getTokenBalance(connection, userTokenAccount))} tokens`);
-  console.log(`   Vault: ${formatTokenAmount(await getTokenBalance(connection, vault))} tokens`);
-  console.log(`   Merchant: ${formatTokenAmount(await getTokenBalance(connection, merchantTokenAccount))} tokens`);
+  console.log(`   User: ${formatTokenAmount(await getTokenBalance(client.connection, userTokenAccount))} tokens`);
+  console.log(`   Vault: ${formatTokenAmount(await getTokenBalance(client.connection, vault))} tokens`);
+  console.log(`   Merchant: ${formatTokenAmount(await getTokenBalance(client.connection, merchantTokenAccount))} tokens`);
   
   // ============================================
   // Summary
@@ -349,9 +319,10 @@ async function main() {
   console.log("   - Pause/resume functionality");
   
   console.log("\n📚 Explore the SDK:");
+  console.log("   - AugenPayClient: Monolithic client class (used in this sandbox)");
+  console.log("   - Services: Service-oriented API for advanced use cases");
   console.log("   - config/: Configuration and constants");
-  console.log("   - core/: Connection, PDA, and wallet utilities");
-  console.log("   - services/: Mandate, allotment, redeem, merchant");
+  console.log("   - core/: Connection, PDA, wallet, and client utilities");
   console.log("   - utils/: Token and hashing utilities");
   
   console.log("\n🚀 Ready for integration!");

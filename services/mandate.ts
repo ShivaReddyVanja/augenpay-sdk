@@ -2,6 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { deriveMandatePDA, deriveVaultATA, generateMandateNonce } from "../core/pda";
+import { MandateAccount } from "../types/accounts";
 
 export interface MandateConfig {
   perTxLimit: number; // in token base units (e.g., 100_000000 for 100 USDC)
@@ -166,14 +167,25 @@ export async function resumeMandate(
 export async function fetchMandate(
   program: anchor.Program,
   mandate: PublicKey
-): Promise<any> {
-  return await (program.account as any).mandateAccount.fetch(mandate);
+): Promise<MandateAccount> {
+  const account = await (program.account as any).mandateAccount.fetch(mandate);
+  return {
+    owner: account.owner,
+    mandateBump: account.mandateBump,
+    nonce: account.nonce,
+    tokenMint: account.tokenMint,
+    vault: account.vault,
+    perTxLimit: account.perTxLimit,
+    expiry: account.expiry,
+    paused: account.paused,
+    totalDeposited: account.totalDeposited,
+  };
 }
 
 /**
  * Display mandate info
  */
-export function displayMandateInfo(mandate: any) {
+export function displayMandateInfo(mandate: MandateAccount) {
   console.log("\n📋 Mandate Info:");
   console.log(`   Owner: ${mandate.owner.toBase58()}`);
   console.log(`   Token Mint: ${mandate.tokenMint.toBase58()}`);

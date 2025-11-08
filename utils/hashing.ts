@@ -67,55 +67,6 @@ export function hexToHashArray(hex: string): number[] {
 }
 
 /**
- * Example: Create movie ticket order hash
- */
-export function createMovieTicketHash(params: {
-  email: string;
-  movieName: string;
-  numberOfTickets: number;
-  showtime?: string;
-  timestamp?: number;
-}): { hash: number[]; hashHex: string; orderData: OrderData } {
-  const orderData: OrderData = {
-    email: params.email,
-    movie: params.movieName,
-    numberOfTickets: params.numberOfTickets,
-    showtime: params.showtime || "TBD",
-    timestamp: params.timestamp || Date.now(),
-  };
-  
-  const hash = createContextHashArray(orderData);
-  const hashHex = hashToHex(hash);
-  
-  return { hash, hashHex, orderData };
-}
-
-/**
- * Example: Create e-commerce order hash
- */
-export function createEcommerceOrderHash(params: {
-  orderId: string;
-  customerEmail: string;
-  items: { productId: string; quantity: number; price: number }[];
-  totalAmount: number;
-  shippingAddress?: string;
-}): { hash: number[]; hashHex: string; orderData: OrderData } {
-  const orderData: OrderData = {
-    orderId: params.orderId,
-    customerEmail: params.customerEmail,
-    items: params.items,
-    totalAmount: params.totalAmount,
-    shippingAddress: params.shippingAddress,
-    timestamp: Date.now(),
-  };
-  
-  const hash = createContextHashArray(orderData);
-  const hashHex = hashToHex(hash);
-  
-  return { hash, hashHex, orderData };
-}
-
-/**
  * Pretty print order data and hash
  */
 export function displayOrderHash(orderData: OrderData, hash: number[] | Buffer) {

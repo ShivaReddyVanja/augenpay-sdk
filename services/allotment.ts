@@ -1,5 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
+import { AllotmentAccount, AllotmentStatus } from "../types/accounts";
 
 export interface AllotmentConfig {
   allowedAmount: number; // in token base units
@@ -133,14 +134,22 @@ export async function revokeAgentAllotment(
 export async function fetchAllotment(
   program: anchor.Program,
   allotment: PublicKey
-): Promise<any> {
-  return await (program.account as any).allotmentAccount.fetch(allotment);
+): Promise<AllotmentAccount> {
+  const account = await (program.account as any).allotmentAccount.fetch(allotment);
+  return {
+    mandate: account.mandate,
+    agent: account.agent,
+    allowedAmount: account.allowedAmount,
+    spentAmount: account.spentAmount,
+    ttl: account.ttl,
+    revoked: account.revoked,
+  };
 }
 
 /**
  * Display allotment info
  */
-export function displayAllotmentInfo(allotment: any) {
+export function displayAllotmentInfo(allotment: AllotmentAccount) {
   console.log("\n🎫 Allotment Info:");
   console.log(`   Mandate: ${allotment.mandate.toBase58()}`);
   console.log(`   Agent: ${allotment.agent.toBase58()}`);
@@ -149,16 +158,33 @@ export function displayAllotmentInfo(allotment: any) {
   console.log(`   Remaining: ${(allotment.allowedAmount.toNumber() - allotment.spentAmount.toNumber()) / 1e6} tokens`);
   console.log(`   TTL: ${new Date(allotment.ttl.toNumber() * 1000).toISOString()}`);
   console.log(`   Revoked: ${allotment.revoked}`);
-  console.log(`   Status: ${getallotmentStatus(allotment)}`);
+  console.log(`   Status: ${getAllotmentStatusDisplay(allotment)}`);
 }
 
 /**
  * Get allotment status
  */
-export function getallotmentStatus(allotment: any): string {
-  if (allotment.revoked) return "❌ Revoked";
-  if (Date.now() > allotment.ttl.toNumber() * 1000) return "⏰ Expired";
-  if (allotment.spentAmount.toNumber() >= allotment.allowedAmount.toNumber()) return "💯 Fully Spent";
-  return "✅ Active";
+export function getAllotmentStatus(allotment: AllotmentAccount): AllotmentStatus {
+  if (allotment.revoked) return "revoked";
+  if (Date.now() > allotment.ttl.toNumber() * 1000) return "expired";
+  if (allotment.spentAmount.toNumber() >= allotment.allowedAmount.toNumber()) return "fully_spent";
+  return "active";
+}
+
+/**
+ * Get formatted status string with emoji (for display)
+ */
+export function getAllotmentStatusDisplay(allotment: AllotmentAccount): string {
+  const status = getAllotmentStatus(allotment);
+  switch (status) {
+    case "revoked":
+      return "❌ Revoked";
+    case "expired":
+      return "⏰ Expired";
+    case "fully_spent":
+      return "💯 Fully Spent";
+    case "active":
+      return "✅ Active";
+  }
 }
 
