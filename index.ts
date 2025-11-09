@@ -21,6 +21,7 @@ export * as merchantService from "./services/merchant";
 // Utils
 export * from "./utils/tokens";
 export * from "./utils/hashing";
+export * from "./utils/payment-gate";
 
 // Types
 export * from "./types/accounts";

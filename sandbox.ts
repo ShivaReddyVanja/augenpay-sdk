@@ -1,14 +1,17 @@
 #!/usr/bin/env ts-node
 
 /**
- * AugenPay SDK Sandbox
+ * AugenPay SDK Sandbox - x402 Payment Challenge
  * 
- * Complete demonstration of the payment flow:
+ * Complete demonstration of the x402 payment challenge flow:
  * 1. User creates mandate
  * 2. User deposits funds
  * 3. User creates allotment for agent
- * 4. Agent buys movie tickets from merchant
- * 5. Merchant verifies payment on-chain
+ * 4. Agent posts data to merchant API
+ * 5. Merchant responds with 402 Payment Required + payment data
+ * 6. Agent calls redeem on protocol
+ * 7. Agent submits hash as proof of payment
+ * 8. Merchant middleware verifies proof and unlocks API access
  */
 
 import { Keypair } from "@solana/web3.js";
@@ -19,6 +22,7 @@ import { AugenPayClient } from "./core/client";
 import { getBalance } from "./core/wallet";
 import { setupTestEnvironment, getTokenBalance, formatTokenAmount } from "./utils/tokens";
 import { createContextHashArray, hashToHex, OrderData } from "./utils/hashing";
+import { createPaymentChallenge, verifyPaymentProof, paymentGateMiddleware, fulfillOrder } from "./utils/payment-gate";
 
 /**
  * Load fixed keypair from file
@@ -162,15 +166,16 @@ async function main() {
   client.displayAllotment(allotmentData);
   
   // ============================================
-  // STEP 4: Complete Payment Flow (Movie Tickets)
+  // STEP 4: x402 Payment Challenge Flow
   // ============================================
-  console.log("\n\n🎬 STEP 4: Agent buys movie tickets for user");
+  console.log("\n\n🎬 STEP 4: x402 Payment Challenge - Agent requests service");
   console.log("=".repeat(80));
   
   console.log("\n📱 User Request:");
   console.log("   'Buy 2 tickets for Batman: The Dark Knight at 7:00 PM'");
   
-  console.log("\n🤖 Agent → Merchant Website:");
+  // Agent posts order request to merchant API
+  console.log("\n🤖 Agent → Merchant API (POST /order):");
   const orderRequest = {
     email: "user@example.com",
     movieName: "Batman: The Dark Knight",
@@ -179,32 +184,53 @@ async function main() {
   };
   console.log(JSON.stringify(orderRequest, null, 2));
   
-  console.log("\n🏪 Merchant generates order hash and responds:");
-  // Create order data (merchant-defined structure)
+  // Create order data with unique ID
+  const orderId = `ORD-${Date.now()}`;
   const orderData: OrderData = {
+    orderId,
     email: orderRequest.email,
     movie: orderRequest.movieName,
     numberOfTickets: orderRequest.numberOfTickets,
     showtime: orderRequest.showtime,
     timestamp: Date.now(),
   };
-  const hash = createContextHashArray(orderData);
-  const hashHex = hashToHex(hash);
   
-  console.log(`   Payment address: ${merchantTokenAccount.toBase58()}`);
-  console.log(`   Order hash: ${hashHex}`);
-  console.log(`   Amount: 20 tokens (10 per ticket)`);
+  const totalAmount = orderRequest.numberOfTickets * 10_000000; // 10 tokens per ticket
+  
+  // Merchant responds with 402 Payment Required
+  console.log("\n🏪 Merchant API → Agent (HTTP 402 Payment Required):");
+  const paymentChallenge = createPaymentChallenge(
+    orderId,
+    orderData,
+    totalAmount,
+    merchant.publicKey,
+    merchantTokenAccount
+  );
+  console.log(JSON.stringify(paymentChallenge, null, 2));
+  
+  console.log("\n🔒 Merchant API is now GATED - Order locked until payment proof submitted");
+  
+  // Try to access the gated resource (should fail)
+  console.log("\n🚫 Agent attempts to access gated resource:");
+  const gateCheck = paymentGateMiddleware(client.program, orderId);
+  if (!gateCheck.allowed) {
+    console.log(`   ❌ Access DENIED: ${gateCheck.error}`);
+    console.log(`   📋 Order Status: ${gateCheck.order?.status}`);
+  }
   
   const merchantBalanceBefore = await getTokenBalance(client.connection, merchantTokenAccount);
   
-  console.log("\n⛓️  Agent executes payment on blockchain:");
+  // ============================================
+  // STEP 5: Agent executes payment on protocol
+  // ============================================
+  console.log("\n\n⛓️  STEP 5: Agent executes payment on blockchain");
+  console.log("=".repeat(80));
   
   // Create agent's client for signing transactions
   const agentClient = new AugenPayClient(agent, "devnet", AUGENPAY_PROGRAM_ID);
   
-  const totalAmount = orderRequest.numberOfTickets * 10_000000; // 10 tokens per ticket
-  
-  const { ticket, signature } = await agentClient.redeem({
+  console.log("\n💳 Agent calls redeem() on AugenPay protocol:");
+  const { ticket, signature, contextHash } = await agentClient.redeem({
     allotment,
     mandate,
     agent: agent.publicKey,
@@ -220,10 +246,11 @@ async function main() {
   const merchantBalanceAfter = await getTokenBalance(client.connection, merchantTokenAccount);
   const amountReceived = Number(merchantBalanceAfter) - Number(merchantBalanceBefore);
   
-  console.log(`\n💸 Payment Confirmation:`);
-  console.log(`   Merchant received: ${formatTokenAmount(amountReceived)} tokens`);
-  console.log(`   Transaction: ${signature}`);
+  console.log(`\n✅ Payment executed on-chain:`);
   console.log(`   Ticket PDA: ${ticket.toBase58()}`);
+  console.log(`   Transaction: ${signature}`);
+  console.log(`   Order Hash: ${hashToHex(contextHash)}`);
+  console.log(`   Merchant received: ${formatTokenAmount(amountReceived)} tokens`);
   
   console.log(`\n📊 Updated balances:`);
   console.log(`   Vault: ${formatTokenAmount(await getTokenBalance(client.connection, vault))} tokens`);
@@ -235,9 +262,55 @@ async function main() {
   console.log(`   Allotment remaining: ${formatTokenAmount(updatedAllotment.allowedAmount.toNumber() - updatedAllotment.spentAmount.toNumber())} tokens`);
   
   // ============================================
-  // STEP 5: Merchant verifies payment
+  // STEP 6: Agent submits proof of payment
   // ============================================
-  console.log("\n\n✅ STEP 5: Merchant verifies payment on-chain");
+  console.log("\n\n🔐 STEP 6: Agent submits payment proof to merchant API");
+  console.log("=".repeat(80));
+  
+  console.log("\n🤖 Agent → Merchant API (POST /submit-proof):");
+  const paymentProof = {
+    ticket: ticket.toBase58(),
+    orderHash: hashToHex(contextHash),
+  };
+  console.log(JSON.stringify(paymentProof, null, 2));
+  
+  // Merchant middleware verifies proof on-chain
+  console.log("\n🔍 Merchant middleware verifies payment proof on-chain...");
+  const verification = await verifyPaymentProof(
+    client.program,
+    orderId,
+    paymentProof
+  );
+  
+  if (verification.valid && verification.ticket) {
+    console.log("\n✅ Payment proof VERIFIED!");
+    console.log(`   Ticket: ${verification.ticket.toBase58()}`);
+    console.log(`   Order unlocked - API access granted`);
+    
+    // Check gate again (should now allow access)
+    console.log("\n🔓 Agent attempts to access gated resource again:");
+    const gateCheckAfter = paymentGateMiddleware(client.program, orderId);
+    if (gateCheckAfter.allowed && gateCheckAfter.order) {
+      console.log(`   ✅ Access GRANTED!`);
+      console.log(`   📋 Order Status: ${gateCheckAfter.order.status}`);
+      console.log(`   🎫 Ticket: ${gateCheckAfter.order.ticket?.toBase58()}`);
+    }
+    
+    // Merchant fulfills the order
+    console.log("\n📧 Merchant fulfills order:");
+    fulfillOrder(orderId);
+    console.log("   ✅ Sending 2 tickets for 'Batman: The Dark Knight'");
+    console.log("   ✅ To: user@example.com");
+    console.log("   ✅ Showtime: 7:00 PM");
+    console.log("   ✅ Order complete!");
+  } else {
+    console.log(`\n❌ Payment proof verification FAILED: ${verification.error}`);
+  }
+  
+  // ============================================
+  // STEP 7: Merchant verifies payment on-chain
+  // ============================================
+  console.log("\n\n✅ STEP 7: Merchant verifies payment on-chain (final verification)");
   console.log("=".repeat(80));
   
   // Merchant fetches ticket
@@ -248,26 +321,22 @@ async function main() {
   const { valid } = await client.verifyTicket(ticket, orderData);
   
   if (valid) {
-    console.log("\n📧 Merchant fulfills order:");
-    console.log("   ✅ Sending 2 tickets for 'Batman: The Dark Knight'");
-    console.log("   ✅ To: user@example.com");
-    console.log("   ✅ Showtime: 7:00 PM");
-    console.log("   ✅ Order complete!");
+    console.log("\n✅ Final verification: Payment confirmed on-chain");
   }
   
   // ============================================
-  // STEP 6: Merchant views all tickets
+  // STEP 8: Merchant views all tickets
   // ============================================
-  console.log("\n\n📋 STEP 6: Merchant queries all their tickets");
+  console.log("\n\n📋 STEP 8: Merchant queries all their tickets");
   console.log("=".repeat(80));
   
   const allTickets = await client.getMerchantTickets(merchant.publicKey);
   client.displayTickets(allTickets);
   
   // ============================================
-  // STEP 7: Additional features demo
+  // STEP 9: Additional features demo
   // ============================================
-  console.log("\n\n🎯 STEP 7: Additional Features");
+  console.log("\n\n🎯 STEP 9: Additional Features");
   console.log("=".repeat(80));
   
   console.log("\n✏️  Testing allotment modification:");
@@ -313,6 +382,11 @@ async function main() {
   console.log("   - Mandate creation and management");
   console.log("   - Token deposits and withdrawals");
   console.log("   - Agent allotment creation and modification");
+  console.log("   - x402 Payment Challenge flow");
+  console.log("   - Merchant API gating with payment middleware");
+  console.log("   - On-chain payment execution");
+  console.log("   - Payment proof verification");
+  console.log("   - API unlock after payment verification");
   console.log("   - Complete payment flow with hash verification");
   console.log("   - Merchant payment verification");
   console.log("   - Ticket discoverability");

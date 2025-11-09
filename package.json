@@ -1,6 +1,6 @@
 {
   "name": "augenpay-sdk",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "TypeScript SDK for AugenPay Payment Protocol on Solana - Delegated payments with on-chain verification",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,8 +21,8 @@
     "dev": "ts-node sandbox.ts",
     "sandbox": "ts-node sandbox.ts",
     "clean": "rm -rf dist",
-    "prepublishOnly": "yarn clean && yarn build",
-    "prepack": "yarn build",
+    "prepublishOnly": "npm run clean && npm run build",
+    "prepack": "npm run build",
     "generate-keypairs": "ts-node scripts/generate-keypairs.ts",
     "show-wallets": "ts-node scripts/show-wallet-links.ts"
   },
@@ -44,12 +44,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/augenpay-sdk.git"
+    "url": "https://github.com/ShivaReddyVanja/augenpay-sdk.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/augenpay-sdk/issues"
+    "url": "https://github.com/ShivaReddyVanja/augenpay-sdk/issues"
   },
-  "homepage": "https://github.com/your-username/augenpay-sdk#readme",
+  "homepage": "https://github.com/ShivaReddyVanja/augenpay-sdk#readme",
   "engines": {
     "node": ">=16.0.0"
   },
