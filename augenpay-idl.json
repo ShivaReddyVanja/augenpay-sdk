@@ -597,7 +597,7 @@
           "name": "ticket",
           "docs": [
             "Ticket PDA created to store context hash publicly",
-            "Seeded with merchant address for easy discoverability"
+            "Seeded with merchant address and redemption count for easy discoverability"
           ],
           "writable": true,
           "pda": {
@@ -620,6 +620,11 @@
               {
                 "kind": "account",
                 "path": "allotment"
+              },
+              {
+                "kind": "account",
+                "path": "allotment.redemption_count",
+                "account": "AllotmentAccount"
               }
             ]
           }
@@ -1021,6 +1026,10 @@
           {
             "name": "revoked",
             "type": "bool"
+          },
+          {
+            "name": "redemption_count",
+            "type": "u64"
           }
         ]
       }

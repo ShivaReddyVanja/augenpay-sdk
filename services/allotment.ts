@@ -143,6 +143,7 @@ export async function fetchAllotment(
     spentAmount: account.spentAmount,
     ttl: account.ttl,
     revoked: account.revoked,
+    redemptionCount: account.redemptionCount,
   };
 }
 
@@ -156,6 +157,7 @@ export function displayAllotmentInfo(allotment: AllotmentAccount) {
   console.log(`   Allowed Amount: ${allotment.allowedAmount.toNumber() / 1e6} tokens`);
   console.log(`   Spent Amount: ${allotment.spentAmount.toNumber() / 1e6} tokens`);
   console.log(`   Remaining: ${(allotment.allowedAmount.toNumber() - allotment.spentAmount.toNumber()) / 1e6} tokens`);
+  console.log(`   Redemption Count: ${allotment.redemptionCount.toNumber()}`);
   console.log(`   TTL: ${new Date(allotment.ttl.toNumber() * 1000).toISOString()}`);
   console.log(`   Revoked: ${allotment.revoked}`);
   console.log(`   Status: ${getAllotmentStatusDisplay(allotment)}`);

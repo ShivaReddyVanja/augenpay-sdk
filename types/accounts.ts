@@ -47,6 +47,8 @@ export interface AllotmentAccount {
   ttl: anchor.BN;
   /** Whether this allotment has been revoked */
   revoked: boolean;
+  /** Number of redemptions made from this allotment */
+  redemptionCount: anchor.BN;
 }
 
 /**

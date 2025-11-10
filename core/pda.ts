@@ -25,11 +25,12 @@ export function deriveMandatePDA(
 
 /**
  * Derive Ticket PDA (Redemption Receipt)
- * Seeds: [b"ticket", merchant_pubkey, allotment_pubkey]
+ * Seeds: [b"ticket", merchant_pubkey, allotment_pubkey, redemption_count]
  */
 export function deriveTicketPDA(
   merchant: PublicKey,
   allotment: PublicKey,
+  redemptionCount: anchor.BN,
   programId: PublicKey
 ): [PublicKey, number] {
   const [pda, bump] = PublicKey.findProgramAddressSync(
@@ -37,6 +38,7 @@ export function deriveTicketPDA(
       Buffer.from(SEEDS.TICKET),
       merchant.toBuffer(),
       allotment.toBuffer(),
+      redemptionCount.toArrayLike(Buffer, "le", 8),
     ],
     programId
   );

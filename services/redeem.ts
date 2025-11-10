@@ -29,14 +29,21 @@ export async function redeemAllotment(
   console.log(`   Amount: ${params.amount / 1e6} tokens`);
   console.log(`   Merchant: ${params.merchant.toBase58()}`);
   
+  // Fetch allotment to get current redemption count
+  const allotmentAccount = await (program.account as any).allotmentAccount.fetch(params.allotment);
+  const redemptionCount = allotmentAccount.redemptionCount as anchor.BN;
+  
+  console.log(`   Current redemption count: ${redemptionCount.toString()}`);
+  
   // Generate context hash from order data
   const contextHash = createContextHashArray(params.orderData);
   displayOrderHash(params.orderData, contextHash);
   
-  // Derive ticket PDA
+  // Derive ticket PDA with redemption count
   const [ticket, _ticketBump] = deriveTicketPDA(
     params.merchant,
     params.allotment,
+    redemptionCount,
     program.programId
   );
   
