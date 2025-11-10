@@ -4,7 +4,21 @@ TypeScript SDK for interacting with the AugenPay Payment Protocol on Solana.
 
 ## Introduction
 
-**AugenPay** is the core infrastructure layer that enables **trustless agent delegation** and **on-chain merchant verification** for AI agent payment systems. We're building the **plumbing that all agents will depend on** - providing fine-grained spending controls for users and privacy-enabled payment verification for merchants.
+**AugenPay** lets you safely give AI agents or automated services permission to make payments on your behalf, with built-in limits and controls.
+
+**How it works:**
+- You create a **mandate** (like a payment wallet) and set spending limits
+- You give **allotments** to agents (permission to spend up to a certain amount)
+- Agents can **redeem** allotments to pay merchants
+- Merchants get **on-chain proof** that payment was received
+
+**Why it's useful:**
+- ✅ Set spending limits so agents can't overspend
+- ✅ Revoke permissions anytime
+- ✅ Merchants can verify payments on the blockchain
+- ✅ Support for multiple small payments (micropayments)
+
+> 📖 **New to AugenPay?** Check out [TERMINOLOGY.md](./TERMINOLOGY.md) for explanations of terms like mandate, allotment, redemption, PDA, and more.
 
 ### Core Strengths
 
@@ -29,31 +43,39 @@ AugenPay delivers three critical components:
 
 ⚙️ **The Core Problem**
 
-Today's AI agents — or any autonomous applications — can think, decide, and act, but they cannot pay safely.
+Today's AI agents can make decisions and take actions, but they can't make payments safely.
 
-**Payments are the missing primitive in the machine economy.**
+### 1️⃣ Users must share private keys (Not Safe!)
 
-### 1️⃣ Agents can't spend safely
+To let an agent make payments, users currently have to give the agent their **private keys** or full wallet access.
 
-Developers must give an agent full wallet access just to let it buy something.
+**This is dangerous because:**
+- The agent can drain your entire wallet
+- No spending limits - agent can overspend
+- Can't revoke access without changing your wallet
+- One bug or hack = all your funds gone
 
-Once authorized, the agent can drain the wallet or overspend, intentionally or via a bug.
+**Example:** You want an agent to buy a $10 coffee, but you have to give it access to your entire wallet with $1000. Not safe!
 
-There's no concept of spend limits, revocation, or context-aware control — meaning no real trust boundary between the user and the agent.
+### 2️⃣ Merchants can't verify payments
 
-### 2️⃣ Merchants can't verify payments natively
+When an agent says "I paid," merchants can't verify it on the blockchain.
 
-When an AI agent or automated service says, "I paid," merchants have to trust API calls or off-chain receipts.
+They have to trust:
+- API responses
+- Off-chain receipts
+- Third-party payment services
 
-There's no unified, verifiable, cryptographic way to prove payment origin, context, or intent — especially for microtransactions or per-request billing.
+There's no way to cryptographically prove the payment actually happened.
 
-### 3️⃣ The x₄₀₂ problem remains unimplemented
+### 3️⃣ No standard payment protocol
 
-The original HTTP 402 "Payment Required" status was never standardized.
+There's no standard way for agents and merchants to handle payments automatically.
 
-Agents and APIs still lack a trustless, programmable payment handshake.
-
-Without it, autonomous commerce can't exist — we're stuck with manual wallets and web2 payment rails.
+This means:
+- Manual payment processes
+- No trustless payment verification
+- Difficult to build autonomous commerce
 
 ## Solution
 
