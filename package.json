@@ -1,6 +1,6 @@
 {
   "name": "augenpay-sdk",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "TypeScript SDK for AugenPay Payment Protocol on Solana - Delegated payments with on-chain verification",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -24,7 +24,8 @@
     "prepublishOnly": "npm run clean && npm run build",
     "prepack": "npm run build",
     "generate-keypairs": "ts-node scripts/generate-keypairs.ts",
-    "show-wallets": "ts-node scripts/show-wallet-links.ts"
+    "show-wallets": "ts-node scripts/show-wallet-links.ts",
+    "cli": "ts-node cli/augenpay-cli.ts"
   },
   "keywords": [
     "solana",
@@ -56,10 +57,14 @@
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
     "@solana/spl-token": "^0.4.14",
-    "@solana/web3.js": "^1.87.6"
+    "@solana/web3.js": "^1.87.6",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.2",
+    "inquirer": "^12.11.0"
   },
   "devDependencies": {
     "@types/bs58": "^4.0.4",
+    "@types/inquirer": "^9.0.9",
     "@types/node": "^20.10.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"

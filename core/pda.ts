@@ -144,3 +144,41 @@ export async function getMerchantTickets(
   return accounts.map((account) => account.pubkey);
 }
 
+/**
+ * Get all allotments for an agent
+ * Queries all AllotmentAccount accounts for the specified agent
+ */
+export async function getAgentAllotments(
+  agent: PublicKey,
+  programId: PublicKey,
+  connection: anchor.web3.Connection
+): Promise<PublicKey[]> {
+  // AllotmentAccount structure:
+  // Offset 0-7:   Discriminator (8 bytes)
+  // Offset 8-39:  mandate (PublicKey = 32 bytes)
+  // Offset 40-71: agent (PublicKey = 32 bytes)
+  // Offset 72-79: allowed_amount (u64 = 8 bytes)
+  // Offset 80-87: spent_amount (u64 = 8 bytes)
+  // Offset 88-95: ttl (i64 = 8 bytes)
+  // Offset 96:    revoked (bool = 1 byte)
+  // Offset 97-104: redemption_count (u64 = 8 bytes)
+  // Total: 8 + 32 + 32 + 8 + 8 + 8 + 1 + 8 = 105 bytes
+  const allotmentDataSize = 105;
+  
+  const accounts = await connection.getProgramAccounts(programId, {
+    filters: [
+      {
+        dataSize: allotmentDataSize,
+      },
+      {
+        memcmp: {
+          offset: 40, // After discriminator (8) + mandate (32) = 40, agent field starts here
+          bytes: bs58.encode(agent.toBytes()),
+        },
+      },
+    ],
+  });
+
+  return accounts.map((account) => account.pubkey);
+}
+

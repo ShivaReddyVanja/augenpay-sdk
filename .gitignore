@@ -6,3 +6,4 @@ yarn-error.log
 *.keypair.json
 .env
 .keypairs/
+.augenpay-session.json

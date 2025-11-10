@@ -214,6 +214,45 @@ You'll see detailed console output showing:
 ```
 → Run `yarn generate-keypairs` first
 
+## Interactive CLI
+
+The AugenPay SDK includes a powerful interactive CLI that lets you test the entire protocol by acting as a User, Agent, or Merchant. This is perfect for:
+
+- **Judges & Evaluators**: Explore the protocol without writing code
+- **Developers**: Test integrations and understand the flow
+- **Demonstrations**: Show the protocol in action
+
+### Quick Start
+
+```bash
+# Generate wallets (if not already done)
+yarn generate-keypairs
+
+# Start the CLI
+yarn cli
+```
+
+The CLI will prompt you to select a role (User, Agent, or Merchant) and then provide an interactive command interface.
+
+### Complete Testing Workflow
+
+For a complete end-to-end testing guide with step-by-step instructions, see **[CLI_USAGE.md](./CLI_USAGE.md)**.
+
+The guide includes:
+- Complete workflow example using 3 terminals
+- Testing pause/resume functionality
+- Full command reference with all options
+- Troubleshooting tips
+
+### Key Features
+
+- **Role-based Commands**: Separate commands for User, Agent, and Merchant roles
+- **Interactive Selection**: Choose from available mandates, allotments, or tickets
+- **Session Management**: Automatically remembers last-used addresses
+- **Positional Arguments**: Use addresses directly: `user deposit <mandate-address> -a 500`
+- **Helpful Error Messages**: Clear errors with solutions
+- **Transaction Links**: All transactions include Solana Explorer links
+
 ## x402 Payment Challenge Flow Diagram
 
 The following diagram illustrates the complete x402 Payment Challenge flow:

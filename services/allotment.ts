@@ -135,16 +135,27 @@ export async function fetchAllotment(
   program: anchor.Program,
   allotment: PublicKey
 ): Promise<AllotmentAccount> {
-  const account = await (program.account as any).allotmentAccount.fetch(allotment);
-  return {
-    mandate: account.mandate,
-    agent: account.agent,
-    allowedAmount: account.allowedAmount,
-    spentAmount: account.spentAmount,
-    ttl: account.ttl,
-    revoked: account.revoked,
-    redemptionCount: account.redemptionCount,
-  };
+  try {
+    const account = await (program.account as any).allotmentAccount.fetch(allotment);
+    return {
+      mandate: account.mandate,
+      agent: account.agent,
+      allowedAmount: account.allowedAmount,
+      spentAmount: account.spentAmount,
+      ttl: account.ttl,
+      revoked: account.revoked,
+      redemptionCount: account.redemptionCount || new anchor.BN(0),
+    };
+  } catch (error: any) {
+    if (error.message?.includes("AccountDidNotDeserialize") || error.code === 3003) {
+      throw new Error(
+        `Allotment account structure mismatch. This allotment was created with an older version of the protocol ` +
+        `that doesn't include redemption_count. Please create a new allotment using the updated protocol. ` +
+        `Allotment: ${allotment.toBase58()}`
+      );
+    }
+    throw error;
+  }
 }
 
 /**
