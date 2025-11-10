@@ -104,15 +104,44 @@ This provides **granular control**, **on-chain transparency**, and **instant ver
 
 ### Prerequisites
 
+Before installing the SDK, make sure you have:
+
+- **Node.js** (v16.0.0 or higher)
+- **npm** or **yarn** package manager
+- **TypeScript** (installed globally or as dev dependency)
+
+> 💡 **Note:** All commands work with both `npm` and `yarn`. You can use either package manager - just replace `yarn` with `npm run` in the examples below.
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/ShivaReddyVanja/augenpay-sdk.git
+cd augenpay-sdk
+```
+
 1. **Install Dependencies**:
+
+**Using yarn:**
 ```bash
 yarn install
 ```
+**Using npm:**
+```bash
+npm install
+```
 
 2. **Generate Keypairs** (if not already done):
+   
+   **Using yarn:**
    ```bash
    yarn generate-keypairs
    ```
+   
+   **Using npm:**
+   ```bash
+   npm run generate-keypairs
+   ```
+   
    This creates `.keypairs/` directory with:
    - `user.json` - User wallet
    - `agent.json` - Agent wallet  
@@ -121,7 +150,7 @@ yarn install
 3. **Fund the Wallets**:
    - Visit https://faucet.solana.com
    - Fund each wallet (minimum 0.5 SOL recommended)
-   - Or use: `yarn show-wallets` to get wallet links
+   - Or use: `yarn show-wallets` or `npm run show-wallets` to get wallet links
 
 ### Running the Sandbox Demo
 
@@ -130,6 +159,10 @@ The sandbox demonstrates the complete **x402 Payment Challenge** flow:
 ```bash
 yarn sandbox
 ```
+
+```bash
+# Using npm
+npm run sandbox
 
 #### What the Sandbox Demonstrates
 
