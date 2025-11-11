@@ -43,9 +43,28 @@ function loadKeypair(filename: string): Keypair {
   return Keypair.fromSecretKey(secretKey);
 }
 
+/**
+ * Helper function to get Solana Explorer link for a transaction
+ */
+function getExplorerLink(signature: string, cluster: string = "devnet"): string {
+  const clusterParam = cluster === "mainnet-beta" ? "" : `?cluster=${cluster}`;
+  return `https://explorer.solana.com/tx/${signature}${clusterParam}`;
+}
+
+/**
+ * Interface for tracking transactions
+ */
+interface TransactionRecord {
+  action: string;
+  signature: string;
+}
+
 async function main() {
   console.log("🚀 AugenPay SDK Sandbox");
   console.log("=".repeat(80));
+  
+  // Track all transactions
+  const transactions: TransactionRecord[] = [];
   
   // ============================================
   // STEP 0: Setup
@@ -113,7 +132,7 @@ async function main() {
   console.log("\n\n📝 STEP 1: User creates mandate");
   console.log("=".repeat(80));
   
-  const { mandate, vault, nonce } = await client.createMandate(
+  const { mandate, vault, nonce, signature: createMandateSig } = await client.createMandate(
     user.publicKey,
     mint,
     {
@@ -121,6 +140,8 @@ async function main() {
       expiryDays: 30, // 30 days
     }
   );
+  
+  transactions.push({ action: "Create Mandate", signature: createMandateSig });
   
   // Fetch and display mandate info
   const mandateData = await client.getMandate(mandate);
@@ -132,7 +153,7 @@ async function main() {
   console.log("\n\n💰 STEP 2: User deposits funds into mandate");
   console.log("=".repeat(80));
   
-  await client.deposit(
+  const depositSig = await client.deposit(
     mandate,
     userTokenAccount,
     vault,
@@ -140,6 +161,8 @@ async function main() {
     user.publicKey,
     500_000000 // 500 tokens
   );
+  
+  transactions.push({ action: "Deposit Tokens", signature: depositSig });
   
   console.log(`\n📊 Updated balances:`);
   console.log(`   User token account: ${formatTokenAmount(await getTokenBalance(client.connection, userTokenAccount))} tokens`);
@@ -151,7 +174,7 @@ async function main() {
   console.log("\n\n🎫 STEP 3: User creates spending allotment for agent");
   console.log("=".repeat(80));
   
-  const { allotment } = await client.createAllotment(
+  const { allotment, signature: createAllotmentSig } = await client.createAllotment(
     mandate,
     agent.publicKey,
     user.publicKey,
@@ -160,6 +183,8 @@ async function main() {
       ttlHours: 24, // 24 hours
     }
   );
+  
+  transactions.push({ action: "Create Allotment", signature: createAllotmentSig });
   
   // Fetch and display allotment info
   const allotmentData = await client.getAllotment(allotment);
@@ -230,7 +255,7 @@ async function main() {
   const agentClient = new AugenPayClient(agent, "devnet", AUGENPAY_PROGRAM_ID);
   
   console.log("\n💳 Agent calls redeem() on AugenPay protocol:");
-  const { ticket, signature, contextHash } = await agentClient.redeem({
+  const { ticket, signature: redeemSig, contextHash } = await agentClient.redeem({
     allotment,
     mandate,
     agent: agent.publicKey,
@@ -242,13 +267,15 @@ async function main() {
     orderData,
   });
   
+  transactions.push({ action: "Redeem Payment", signature: redeemSig });
+  
   // Verify transfer
   const merchantBalanceAfter = await getTokenBalance(client.connection, merchantTokenAccount);
   const amountReceived = Number(merchantBalanceAfter) - Number(merchantBalanceBefore);
   
   console.log(`\n✅ Payment executed on-chain:`);
   console.log(`   Ticket PDA: ${ticket.toBase58()}`);
-  console.log(`   Transaction: ${signature}`);
+  console.log(`   Transaction: ${redeemSig}`);
   console.log(`   Order Hash: ${hashToHex(contextHash)}`);
   console.log(`   Merchant received: ${formatTokenAmount(amountReceived)} tokens`);
   
@@ -340,7 +367,7 @@ async function main() {
   console.log("=".repeat(80));
   
   console.log("\n✏️  Testing allotment modification:");
-  await client.modifyAllotment(
+  const modifyAllotmentSig = await client.modifyAllotment(
     mandate,
     allotment,
     user.publicKey,
@@ -348,18 +375,22 @@ async function main() {
     48 // Extend to 48 hours
   );
   
+  transactions.push({ action: "Modify Allotment", signature: modifyAllotmentSig });
+  
   const modifiedAllotment = await client.getAllotment(allotment);
   client.displayAllotment(modifiedAllotment);
   
   console.log("\n⏸️  Testing pause/resume:");
-  await client.pauseMandate(mandate, user.publicKey);
+  const pauseSig = await client.pauseMandate(mandate, user.publicKey);
+  transactions.push({ action: "Pause Mandate", signature: pauseSig });
   console.log("   ✅ Mandate paused");
   
-  await client.resumeMandate(mandate, user.publicKey);
+  const resumeSig = await client.resumeMandate(mandate, user.publicKey);
+  transactions.push({ action: "Resume Mandate", signature: resumeSig });
   console.log("   ✅ Mandate resumed");
   
   console.log("\n💸 Testing withdrawal:");
-  await client.withdraw(
+  const withdrawSig = await client.withdraw(
     mandate,
     vault,
     userTokenAccount,
@@ -367,6 +398,8 @@ async function main() {
     user.publicKey,
     100_000000 // Withdraw 100 tokens
   );
+  
+  transactions.push({ action: "Withdraw Tokens", signature: withdrawSig });
   
   console.log(`\n📊 Final balances:`);
   console.log(`   User: ${formatTokenAmount(await getTokenBalance(client.connection, userTokenAccount))} tokens`);
@@ -391,6 +424,21 @@ async function main() {
   console.log("   - Merchant payment verification");
   console.log("   - Ticket discoverability");
   console.log("   - Pause/resume functionality");
+  
+  // ============================================
+  // Transaction Links
+  // ============================================
+  console.log("\n\n🔗 On-Chain Transaction Links");
+  console.log("=".repeat(80));
+  console.log("\nAll transactions executed during this sandbox test:\n");
+  
+  transactions.forEach((tx, index) => {
+    const shortSig = `${tx.signature.slice(0, 16)}...${tx.signature.slice(-8)}`;
+    const link = getExplorerLink(tx.signature, "devnet");
+    console.log(`${index + 1}. ${tx.action}`);
+    console.log(`   TX: ${shortSig}`);
+    console.log(`   🔗 ${link}\n`);
+  });
   
   console.log("\n📚 Explore the SDK:");
   console.log("   - AugenPayClient: Monolithic client class (used in this sandbox)");
