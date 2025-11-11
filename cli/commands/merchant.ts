@@ -107,7 +107,7 @@ export function createMerchantCommands(program: Command, env: Environment): void
             console.error(chalk.red(`\n❌ Ticket not found: ${ticketAddr}`));
             console.log(chalk.yellow(`\n💡 This ticket address doesn't exist on-chain or is not a valid ticket account.`));
             console.log(chalk.gray(`\n💡 Try:`));
-            console.log(chalk.gray(`   1. List your tickets: merchant list`));
+            console.log(chalk.gray(`   1. List your tickets: list`));
             console.log(chalk.gray(`   2. Or wait for an agent to make a payment`));
             return;
           } else {

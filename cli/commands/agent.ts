@@ -274,7 +274,7 @@ export function createAgentCommands(program: Command, env: Environment): void {
               } else {
                 console.log(chalk.yellow(`\n💡 No allotment found for this mandate.`));
                 console.log(chalk.gray(`\n💡 Try:`));
-                console.log(chalk.gray(`   1. List your allotments: agent list-allotments`));
+                console.log(chalk.gray(`   1. List your allotments: list-allotments`));
                 console.log(chalk.gray(`   2. Use the ALLOTMENT address (first line), not the mandate address`));
               }
               return;
@@ -285,7 +285,7 @@ export function createAgentCommands(program: Command, env: Environment): void {
             console.error(chalk.red(`\n❌ Allotment not found: ${allotmentAddr}`));
             console.log(chalk.yellow(`\n💡 This address doesn't exist on-chain or is not a valid allotment account.`));
             console.log(chalk.gray(`\n💡 Try:`));
-            console.log(chalk.gray(`   1. List your allotments: agent list-allotments`));
+            console.log(chalk.gray(`   1. List your allotments: list-allotments`));
             console.log(chalk.gray(`   2. Use the ALLOTMENT address (first line), not the mandate address`));
             console.log(chalk.gray(`   3. Or ask a user to create a new allotment for you`));
             return;

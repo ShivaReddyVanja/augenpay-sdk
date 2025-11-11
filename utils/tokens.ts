@@ -102,12 +102,20 @@ export async function setupTestEnvironment(
   connection: Connection,
   payer: Keypair,
   users: Keypair[],
-  initialAmount: number = 1000_000000
+  initialAmount: number = 1000_000000,
+  existingMint?: PublicKey
 ) {
   console.log("\n🔧 Setting up test environment...");
   
-  // Create test token
-  const mint = await createTestToken(connection, payer);
+  // Use existing mint if provided, otherwise create new one
+  let mint: PublicKey;
+  if (existingMint) {
+    mint = existingMint;
+    console.log(`   Using existing mint: ${mint.toBase58()}`);
+  } else {
+    // Create test token
+    mint = await createTestToken(connection, payer);
+  }
   
   // Create token accounts for all users
   const tokenAccounts: PublicKey[] = [];

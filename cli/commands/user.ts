@@ -27,22 +27,42 @@ export function createUserCommands(program: Command, env: Environment): void {
       try {
         const amount = options.amount ? Math.floor(options.amount * 1e6) : 1000_000000; // Default 1000 tokens
 
-        console.log(chalk.cyan("\n🔧 Setting up test environment..."));
-        console.log(chalk.gray(`   Minting ${amount / 1e6} tokens to each wallet`));
+        // Check if we have an existing mint in session
+        const sessionMint = getSession("lastMint");
+        let existingMint: PublicKey | undefined;
+        let isReusingMint = false;
+
+        if (sessionMint) {
+          existingMint = new PublicKey(sessionMint);
+          isReusingMint = true;
+          console.log(chalk.cyan("\n🔧 Setting up test environment..."));
+          console.log(chalk.gray(`   Using existing mint: ${existingMint.toBase58()}`));
+          console.log(chalk.gray(`   Minting ${amount / 1e6} tokens to each wallet`));
+        } else {
+          console.log(chalk.cyan("\n🔧 Setting up test environment..."));
+          console.log(chalk.gray(`   Creating new test token and minting ${amount / 1e6} tokens to each wallet`));
+        }
 
         const { mint, tokenAccounts } = await setupTestEnvironment(
           env.connection,
           env.wallets.user,
           [env.wallets.user, env.wallets.agent, env.wallets.merchant],
-          amount
+          amount,
+          existingMint
         );
 
         const [userTokenAccount, agentTokenAccount, merchantTokenAccount] = tokenAccounts;
 
-        // Save mint to session
-        saveSession({ lastMint: mint.toBase58() });
+        // Save mint to session (if it's new)
+        if (!isReusingMint) {
+          saveSession({ lastMint: mint.toBase58() });
+        }
 
-        console.log(chalk.green("\n✅ Test tokens created!"));
+        if (isReusingMint) {
+          console.log(chalk.green("\n✅ Tokens minted to all wallets!"));
+        } else {
+          console.log(chalk.green("\n✅ Test tokens created!"));
+        }
         console.log(chalk.white(`   Mint: ${mint.toBase58()}`));
         console.log(chalk.white(`   User Token Account: ${userTokenAccount.toBase58()}`));
         console.log(chalk.white(`   Agent Token Account: ${agentTokenAccount.toBase58()}`));
@@ -57,8 +77,8 @@ export function createUserCommands(program: Command, env: Environment): void {
         console.log(chalk.white(`   Agent: ${formatTokenAmount(agentBalance)} tokens`));
         console.log(chalk.white(`   Merchant: ${formatTokenAmount(merchantBalance)} tokens`));
 
-        console.log(chalk.yellow("\n💡 Tip: Use this mint address when creating mandates"));
-        console.log(chalk.gray(`   Example: user create-mandate -m ${mint.toBase58()}`));
+        console.log(chalk.yellow("\n💡 This mint address is saved to session and will be reused automatically"));
+        console.log(chalk.gray(`   You can create mandates without specifying -m flag: create-mandate`));
       } catch (error: any) {
         console.error(chalk.red(`\n❌ Error: ${error.message}`));
         if (error.logs) {
@@ -85,17 +105,20 @@ export function createUserCommands(program: Command, env: Environment): void {
           mint = new PublicKey(options.mint);
           shouldMintTokens = false; // Don't mint if user specified a mint (they might not have mint authority)
         } else {
-          // Check if we have a session mint
+          // Always check for session mint first - reuse the same mint consistently
           const sessionMint = getSession("lastMint");
           if (sessionMint) {
             mint = new PublicKey(sessionMint);
-            console.log(chalk.gray(`   Using session mint: ${mint.toBase58()}`));
+            console.log(chalk.cyan("\n🔧 Using existing test token from session"));
+            console.log(chalk.gray(`   Mint: ${mint.toBase58()}`));
+            console.log(chalk.gray(`   💡 All mandates will use this same mint address`));
           } else {
-            // Create a new test token mint
+            // Create a new test token mint only if no session mint exists
             console.log(chalk.cyan("\n🔧 Creating new test token..."));
             mint = await createTestToken(env.connection, env.wallets.user, 6);
             saveSession({ lastMint: mint.toBase58() });
             console.log(chalk.green(`✅ Test token created: ${mint.toBase58()}`));
+            console.log(chalk.gray(`   💡 This mint will be reused for all future mandates`));
           }
         }
 
@@ -279,12 +302,12 @@ export function createUserCommands(program: Command, env: Environment): void {
           console.log(chalk.gray(`   1. Create a new mandate with the test token mint:`));
           const sessionMint = getSession("lastMint");
           if (sessionMint) {
-            console.log(chalk.cyan(`      user create-mandate -m ${sessionMint}`));
+            console.log(chalk.cyan(`      create-mandate -m ${sessionMint}`));
           } else {
-            console.log(chalk.cyan(`      user create-mandate -m <your-test-token-mint>`));
+            console.log(chalk.cyan(`      create-mandate -m <your-test-token-mint>`));
           }
           console.log(chalk.gray(`   2. Or create new test tokens with this mint:`));
-          console.log(chalk.cyan(`      user setup-tokens`));
+          console.log(chalk.cyan(`      setup-tokens`));
           return;
         }
 
@@ -395,9 +418,9 @@ export function createUserCommands(program: Command, env: Environment): void {
           console.log(chalk.yellow(`   Required for allotment: ${formatTokenAmount(allowedAmount, 6)} tokens`));
           console.log(chalk.gray(`\n💡 Solution:`));
           console.log(chalk.gray(`   1. Deposit tokens into the mandate vault first:`));
-          console.log(chalk.cyan(`      user deposit ${mandate.toBase58()} -a ${allowedAmount / 1e6}`));
+          console.log(chalk.cyan(`      deposit ${mandate.toBase58()} -a ${allowedAmount / 1e6}`));
           console.log(chalk.gray(`   2. Or deposit a larger amount:`));
-          console.log(chalk.cyan(`      user deposit ${mandate.toBase58()} -a <amount>`));
+          console.log(chalk.cyan(`      deposit ${mandate.toBase58()} -a <amount>`));
           return;
         }
 
@@ -424,9 +447,9 @@ export function createUserCommands(program: Command, env: Environment): void {
           console.log(chalk.yellow(`\n💡 The mandate vault doesn't have enough tokens to cover this allotment.`));
           console.log(chalk.gray(`\n💡 Solution:`));
           console.log(chalk.gray(`   1. Check vault balance:`));
-          console.log(chalk.cyan(`      user view ${currentMandateAddr}`));
+          console.log(chalk.cyan(`      view ${currentMandateAddr}`));
           console.log(chalk.gray(`   2. Deposit tokens into the mandate vault:`));
-          console.log(chalk.cyan(`      user deposit ${currentMandateAddr} -a <amount>`));
+          console.log(chalk.cyan(`      deposit ${currentMandateAddr} -a <amount>`));
           console.log(chalk.gray(`   3. Then create the allotment again`));
         } else {
           console.error(chalk.red(`\n❌ Error: ${error.message}`));
