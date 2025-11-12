@@ -38,7 +38,7 @@ console.log(`   Fund: https://faucet.solana.com/?address=${merchant.publicKey.to
 
 console.log("\n" + "=".repeat(80));
 console.log("💡 Tip: Click the links above or copy addresses to faucet.solana.com");
-console.log("✅ Request 2 SOL for each wallet");
+console.log("✅ Request 1 SOL for each wallet");
 console.log("🚀 After funding, run: yarn sandbox");
 console.log("=".repeat(80) + "\n");
 

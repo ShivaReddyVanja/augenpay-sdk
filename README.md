@@ -38,6 +38,7 @@ AugenPay delivers three critical components:
 - **Network**: Solana Devnet
 - **Explorer**: [https://explorer.solana.com/address/6RAnxyQmKfsKxDfpFu2Axry4Hah7aFM8zb2oS3oG41qp?cluster=devnet](https://explorer.solana.com/address/6RAnxyQmKfsKxDfpFu2Axry4Hah7aFM8zb2oS3oG41qp?cluster=devnet)
 - **Protocol Repository**: [https://github.com/ShivaReddyVanja/augenpay-protocol.git](https://github.com/ShivaReddyVanja/augenpay-protocol.git)
+- **NPM Package**: [https://www.npmjs.com/package/augenpay-sdk](https://www.npmjs.com/package/augenpay-sdk)
 
 ## Current Problem
 
@@ -642,6 +643,7 @@ const { program } = await initializeClient(
 - Network: Solana Devnet
 - Explorer: https://explorer.solana.com/address/6RAnxyQmKfsKxDfpFu2Axry4Hah7aFM8zb2oS3oG41qp?cluster=devnet
 - Protocol Repository: https://github.com/ShivaReddyVanja/augenpay-protocol.git
+- NPM Package: https://www.npmjs.com/package/augenpay-sdk
 
 ## License
 
